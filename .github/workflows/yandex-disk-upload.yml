@@ -1,0 +1,33 @@
+name: Upload to Yandex Disk
+
+on:
+  workflow_call:
+    inputs:
+      file_url:
+        required: true
+        type: string
+      upload_path:
+        required: true
+        type: string
+    secrets:
+      auth_token:
+        required: true
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Yandex Disk upload link
+        id: get_link
+        run: |
+          response=$(curl -s -X POST "https://cloud-api.yandex.net/v1/disk/resources/upload?path=${{ inputs.upload_path }}&overwrite=true" \
+            -H "Authorization: OAuth ${{ secrets.auth_token }}")
+          echo "$response"
+          echo "::set-output name=href::$(echo $response | jq -r '.href')"
+        env:
+          upload_path: ${{ inputs.upload_path }}
+          auth_token: ${{ secrets.auth_token }}
+
+      - name: Upload file to Yandex Disk
+        run: |
+          curl -T "${{ inputs.file_url }}" "${{ steps.get_link.outputs.href }}"
