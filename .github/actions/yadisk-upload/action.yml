@@ -1,0 +1,29 @@
+name: 'Yandex Disk Upload'
+description: 'Uploads a local file to Yandex Disk using the REST API'
+inputs:
+  file_path:
+    description: 'Path to the local file to upload'
+    required: true
+  auth_token:
+    description: 'Yandex Disk OAuth token'
+    required: true
+  upload_path:
+    description: 'Destination path on Yandex Disk (e.g., disk:/folder/file.txt)'
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Get Yandex Disk upload link
+      id: get_link
+      shell: bash
+      run: |
+        response=$(curl -s -X GET "https://cloud-api.yandex.net/v1/disk/resources/upload?path=${{ inputs.upload_path }}&overwrite=true" \
+          -H "Authorization: OAuth ${{ inputs.auth_token }}")
+        echo "$response"
+        href=$(echo "$response" | grep -oP '"href"\s*:\s*"\K[^"]+')
+        echo "href=$href" >> $GITHUB_OUTPUT
+
+    - name: Upload local file to Yandex Disk
+      shell: bash
+      run: |
+        curl -T "${{ inputs.file_path }}" "${{ steps.get_link.outputs.href }}"
